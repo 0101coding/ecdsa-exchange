@@ -1,4 +1,7 @@
 import "./index.scss";
+const sha256 = require('crypto-js/sha256');
+const EC = require('elliptic').ec;
+const ec = new EC('secp256k1');
 
 const server = "http://localhost:3042";
 
@@ -19,16 +22,36 @@ document.getElementById("transfer-amount").addEventListener('click', () => {
   const sender = document.getElementById("exchange-address").value;
   const amount = document.getElementById("send-amount").value;
   const recipient = document.getElementById("recipient").value;
+  const privateKey = document.getElementById("privateKey").value;
+  if (privateKey == ""){
+    alert("Please Provide the Signing Key - This will not be transmitted")
+    return;
+  }
+
+  const signature = signMessage(privateKey, amount);
+
 
   const body = JSON.stringify({
-    sender, amount, recipient
+    sender, amount, recipient, signature
   });
 
   const request = new Request(`${server}/send`, { method: 'POST', body });
 
   fetch(request, { headers: { 'Content-Type': 'application/json' }}).then(response => {
     return response.json();
-  }).then(({ balance }) => {
-    document.getElementById("balance").innerHTML = balance;
+  }).then((obj) => {
+    if (obj.error){
+      alert(obj.error);
+    } else{
+        document.getElementById("balance").innerHTML = obj.balance;
+    }
+  
   });
 });
+
+function signMessage(privateKey, amount){
+  const key = ec.keyFromPrivate(privateKey);
+  const signature = key.sign(sha256(amount).toString())
+  console.log(signature);
+  return signature;
+}
